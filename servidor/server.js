@@ -380,6 +380,59 @@ Responda apenas com o conteúdo formatado de forma didática:`;
   }
 });
 
+// Conversão de texto para gramática de Libras
+app.post('/convert-to-libras', rateLimitMiddleware, async (req, res) => {
+  console.log('🤟 Recebida requisição para converter texto para Libras...');
+
+  try {
+    const { text } = req.body;
+
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Texto para converter é obrigatório.' });
+    }
+
+    if (text.length < 3) {
+      return res.status(400).json({ error: 'Texto muito curto para converter.' });
+    }
+
+    if (text.length > 500) {
+      return res.status(400).json({ error: 'Texto muito longo (máximo 500 caracteres).' });
+    }
+
+    const prompt = `Converta o seguinte texto em português para a estrutura gramatical de Libras (Língua Brasileira de Sinais).
+
+TEXTO ORIGINAL:
+"${text}"
+
+REGRAS DA GRAMÁTICA DE LIBRAS (GLOSA):
+- Remova artigos (o, a, os, as, um, uma, uns, umas)
+- Use verbos no infinitivo (não conjugue)
+- Ordem preferencial: Sujeito-Objeto-Verbo ou Tópico-Comentário
+- Omita preposições quando possível (de, para, com, em)
+- Omita conjunções desnecessárias
+- Mantenha números, nomes próprios e palavras-chave
+- Use palavras em MAIÚSCULAS
+- Separe os sinais por espaços
+- Mantenha a essência e significado da mensagem
+
+Exemplo:
+- Português: "O menino está comendo a maçã vermelha"
+- Libras: "MENINO MAÇÃ VERMELHA COMER"
+
+Responda APENAS com o texto convertido para glosa, sem explicações:`;
+
+    const result = await model.generateContent(prompt);
+    const librasText = result.response.text().trim();
+
+    console.log(`✅ Texto convertido para Libras: "${text.substring(0, 50)}..." → "${librasText.substring(0, 50)}..."`);
+    res.json({ librasText, originalText: text });
+
+  } catch (error) {
+    console.error('❌ Erro ao converter para Libras:', error.message);
+    res.status(500).json({ error: 'Falha ao converter texto para Libras.' });
+  }
+});
+
 // 10. Middleware de erro global
 app.use((error, req, res, next) => {
   const timestamp = new Date().toISOString();
@@ -410,7 +463,7 @@ app.listen(PORT, () => {
   console.log(`🤖 API: Google Gemini 1.5 Flash`);
   console.log(`⚡ Rate Limit: ${RATE_LIMIT} req/min (burst: ${BURST_LIMIT} req/10s)`);
   console.log(`🛡️ Segurança: SSRF protection, size limits, timeout controls`);
-  console.log(`📊 Features: 2 AI endpoints + health check`);
+  console.log(`📊 Features: 3 AI endpoints + health check`);
   console.log('🚀 ========================================');
 });
 
